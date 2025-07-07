@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pop-up Test - Your Store</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .store-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .products {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        
+        .product {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .product img {
+            width: 100%;
+            height: 200px;
+            background: #eee;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        
+        /* Pop-up Styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .popup-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: popupSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes popupSlideIn {
+            from {
+                transform: scale(0.8) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .popup-close:hover {
+            color: #333;
+        }
+
+        .popup-content h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        .popup-content p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .popup-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        .popup-content input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .popup-content button[type="submit"] {
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .popup-content button[type="submit"]:hover {
+            background: #0056b3;
+        }
+        
+        .popup-success {
+            display: none;
+        }
+        
+        .popup-success h3 {
+            color: #28a745;
+            margin-bottom: 15px;
+        }
+        
+        .discount-code {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+            border: 2px dashed #007bff;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="store-content">
+        <div class="hero">
+            <h1>🛍️ Your Amazing Store</h1>
+            <p>Welcome to our store! Browse our amazing products below.</p>
+            <p><strong>Wait 5 seconds to see the pop-up in action!</strong></p>
+        </div>
+        
+        <div class="products">
+            <div class="product">
+                <div class="product-img">Product Image</div>
+                <h3>Amazing Product 1</h3>
+                <p>$29.99</p>
+                <button>Add to Cart</button>
+            </div>
+            <div class="product">
+                <div class="product-img">Product Image</div>
+                <h3>Cool Product 2</h3>
+                <p>$39.99</p>
+                <button>Add to Cart</button>
+            </div>
+            <div class="product">
+                <div class="product-img">Product Image</div>
+                <h3>Best Product 3</h3>
+                <p>$49.99</p>
+                <button>Add to Cart</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pop-up HTML -->
+    <div id="discount-popup" class="popup-overlay">
+        <div class="popup-content">
+            <button class="popup-close">&times;</button>
+            <h2>🎉 Get 10% Off Your First Order!</h2>
+            <p>Enter your email to receive an exclusive discount code</p>
+            
+            <form id="popup-form">
+                <input type="email" id="popup-email" placeholder="your-email@example.com" required>
+                <input type="tel" id="popup-phone" placeholder="Phone (optional)">
+                <button type="submit">Get 10% Discount</button>
+            </form>
+            
+            <div id="popup-success" class="popup-success">
+                <h3>🎉 Success!</h3>
+                <p>Your discount code:</p>
+                <div class="discount-code" id="discount-code">POPUP123ABC</div>
+                <p>Check your email for details!</p>
+                <p><small>This pop-up will close automatically in 5 seconds...</small></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const popup = document.getElementById('discount-popup');
+            const form = document.getElementById('popup-form');
+            const closeBtn = document.querySelector('.popup-close');
+            const successDiv = document.getElementById('popup-success');
+            
+            // Show popup after 5 seconds
+            setTimeout(() => {
+                popup.style.display = 'flex';
+                console.log('Pop-up displayed!');
+            }, 5000);
+            
+            // Close popup
+            closeBtn.addEventListener('click', () => {
+                popup.style.display = 'none';
+                console.log('Pop-up closed by user');
+            });
+            
+            // Handle form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const email = document.getElementById('popup-email').value;
+                const phone = document.getElementById('popup-phone').value;
+                
+                // Generate discount code
+                const discountCode = 'POPUP' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                
+                // Show success message immediately
+                document.getElementById('discount-code').textContent = discountCode;
+                form.style.display = 'none';
+                successDiv.style.display = 'block';
+                
+                // Log subscriber data
+                console.log('New subscriber:', {
+                    email,
+                    phone,
+                    discountCode,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Try to send to API (same logic as Shopify extension)
+                const apiData = {
+                    email: email,
+                    phone: phone,
+                    discount_code: discountCode,
+                    block_id: 'test-html-popup'
+                };
+                
+                const apiEndpoints = [
+                    `http://localhost:52998/api/subscribe`,
+                    `http://localhost:52995/api/subscribe`,
+                    `/apps/pop-up-app/api/subscribe`,
+                    `/api/subscribe`
+                ];
+                
+                // Try each endpoint until one works
+                async function tryApiCall() {
+                    for (const endpoint of apiEndpoints) {
+                        try {
+                            console.log(`🔄 Trying API endpoint: ${endpoint}`);
+                            const response = await fetch(endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Shopify-Shop-Domain': 'booksss12345.myshopify.com',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify(apiData)
+                            });
+                            
+                            if (response.ok) {
+                                const result = await response.json();
+                                console.log('✅ SUCCESS! Email stored in database:', result);
+                                return true;
+                            } else {
+                                console.log(`❌ API endpoint ${endpoint} failed with status:`, response.status);
+                            }
+                        } catch (error) {
+                            console.log(`❌ API endpoint ${endpoint} failed:`, error.message);
+                        }
+                    }
+                    console.log('⚠️ All API endpoints failed - popup still works for user');
+                    return false;
+                }
+                
+                // Call the API
+                tryApiCall();
+                
+                // Auto-close after 5 seconds
+                setTimeout(() => {
+                    popup.style.display = 'none';
+                    console.log('Pop-up auto-closed after success');
+                }, 5000);
+            });
+            
+            // Close on overlay click
+            popup.addEventListener('click', function(e) {
+                if (e.target === popup) {
+                    popup.style.display = 'none';
+                    console.log('Pop-up closed by overlay click');
+                }
+            });
+            
+            // Close on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && popup.style.display === 'flex') {
+                    popup.style.display = 'none';
+                    console.log('Pop-up closed by Escape key');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

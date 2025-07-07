@@ -1,0 +1,507 @@
+{% comment %}
+  Discount Pop-up App Embed Block
+  This creates a customizable pop-up for collecting emails/phones and offering discounts
+{% endcomment %}
+
+<style>
+  .popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .popup-overlay.show {
+    display: flex;
+  }
+
+  .popup-container {
+    background: {{ block.settings.background_color | default: '#ffffff' }};
+    color: {{ block.settings.text_color | default: '#333333' }};
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: popupSlideIn 0.3s ease-out;
+  }
+
+  .popup-container.position-right {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .popup-container.position-left {
+    position: fixed;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .popup-container.position-bottom-right {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    transform: none;
+  }
+
+  @keyframes popupSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .popup-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: {{ block.settings.text_color | default: '#333333' }};
+    opacity: 0.7;
+  }
+
+  .popup-close:hover {
+    opacity: 1;
+  }
+
+  .popup-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .popup-description {
+    font-size: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .popup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .popup-input {
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .popup-input:focus {
+    outline: none;
+    border-color: {{ block.settings.button_color | default: '#007cba' }};
+  }
+
+  .popup-submit {
+    background: {{ block.settings.button_color | default: '#007cba' }};
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .popup-submit:hover {
+    opacity: 0.9;
+  }
+
+  .popup-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .popup-success {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .popup-success h3 {
+    color: #28a745;
+    margin-bottom: 10px;
+  }
+
+  .discount-code {
+    background: #f8f9fa;
+    border: 2px dashed {{ block.settings.button_color | default: '#007cba' }};
+    padding: 15px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    margin: 15px 0;
+    letter-spacing: 2px;
+  }
+
+  @media (max-width: 480px) {
+    .popup-container {
+      padding: 20px;
+      margin: 20px;
+    }
+    
+    .popup-title {
+      font-size: 20px;
+    }
+    
+    .popup-description {
+      font-size: 14px;
+    }
+  }
+</style>
+
+{% if block.settings.popup_enabled %}
+<div id="discount-popup-{{ block.id }}" class="popup-overlay">
+  <div class="popup-container position-{{ block.settings.popup_position | default: 'center' }}">
+    <button class="popup-close" onclick="closePopup('{{ block.id }}')">&times;</button>
+    
+    <div id="popup-form-{{ block.id }}">
+      <h2 class="popup-title">{{ block.settings.popup_title | default: 'Get 10% Off Your First Order!' }}</h2>
+      <p class="popup-description">{{ block.settings.popup_description | default: 'Enter your email to receive an exclusive discount code' }}</p>
+      
+      <form class="popup-form" onsubmit="submitPopupForm(event, '{{ block.id }}')">
+        <input 
+          type="email" 
+          class="popup-input" 
+          placeholder="Enter your email address" 
+          required 
+          id="popup-email-{{ block.id }}"
+        >
+        <input 
+          type="tel" 
+          class="popup-input" 
+          placeholder="Phone number (optional)" 
+          id="popup-phone-{{ block.id }}"
+        >
+        <button type="submit" class="popup-submit" id="popup-submit-{{ block.id }}">
+          Get {{ block.settings.discount_percentage | default: 10 }}% Discount
+        </button>
+      </form>
+    </div>
+    
+    <div id="popup-success-{{ block.id }}" class="popup-success" style="display: none;">
+      <h3>🎉 Success!</h3>
+      <p>Your discount code is:</p>
+      <div class="discount-code" id="discount-code-{{ block.id }}"></div>
+      <p>Use this code at checkout to save {{ block.settings.discount_percentage | default: 10 }}%!</p>
+      <button class="popup-submit" onclick="closePopup('{{ block.id }}')">Start Shopping</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const blockId = '{{ block.id }}';
+    const triggerType = '{{ block.settings.trigger_type | default: "page_load" }}';
+    const delaySeconds = {{ block.settings.delay_seconds | default: 5 }};
+    const frequency = '{{ block.settings.popup_frequency | default: "once_per_session" }}';
+    
+    // Check if popup should be shown based on frequency
+    function shouldShowPopup() {
+      const storageKey = `popup_shown_${blockId}`;
+      const now = new Date().getTime();
+      
+      switch(frequency) {
+        case 'once_per_session':
+          return !sessionStorage.getItem(storageKey);
+        case 'once_per_day':
+          const lastShown = localStorage.getItem(storageKey);
+          if (!lastShown) return true;
+          return now - parseInt(lastShown) > 24 * 60 * 60 * 1000;
+        case 'once_per_week':
+          const lastShownWeek = localStorage.getItem(storageKey);
+          if (!lastShownWeek) return true;
+          return now - parseInt(lastShownWeek) > 7 * 24 * 60 * 60 * 1000;
+        case 'every_visit':
+          return true;
+        default:
+          return true;
+      }
+    }
+    
+    // Mark popup as shown
+    function markPopupShown() {
+      const storageKey = `popup_shown_${blockId}`;
+      const now = new Date().getTime();
+      
+      if (frequency === 'once_per_session') {
+        sessionStorage.setItem(storageKey, 'true');
+      } else {
+        localStorage.setItem(storageKey, now.toString());
+      }
+    }
+    
+    // Show popup
+    function showPopup() {
+      if (!shouldShowPopup()) return;
+      
+      const popup = document.getElementById(`discount-popup-${blockId}`);
+      if (popup) {
+        popup.classList.add('show');
+        markPopupShown();
+        
+        // Track popup view
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'popup_view', {
+            'event_category': 'discount_popup',
+            'event_label': blockId
+          });
+        }
+      }
+    }
+    
+    // Initialize popup based on trigger type
+    function initPopup() {
+      switch(triggerType) {
+        case 'page_load':
+          setTimeout(showPopup, delaySeconds * 1000);
+          break;
+        case 'exit_intent':
+          document.addEventListener('mouseleave', function(e) {
+            if (e.clientY <= 0) {
+              showPopup();
+            }
+          });
+          break;
+        case 'time_delay':
+          setTimeout(showPopup, delaySeconds * 1000);
+          break;
+        case 'scroll':
+          let scrollTriggered = false;
+          window.addEventListener('scroll', function() {
+            if (!scrollTriggered && window.scrollY > 300) {
+              scrollTriggered = true;
+              showPopup();
+            }
+          });
+          break;
+      }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPopup);
+    } else {
+      initPopup();
+    }
+  })();
+  
+  // Global functions for form handling
+  window.closePopup = function(blockId) {
+    const popup = document.getElementById(`discount-popup-${blockId}`);
+    if (popup) {
+      popup.classList.remove('show');
+    }
+  };
+  
+  window.submitPopupForm = function(event, blockId) {
+    event.preventDefault();
+    
+    const email = document.getElementById(`popup-email-${blockId}`).value;
+    const phone = document.getElementById(`popup-phone-${blockId}`).value;
+    const submitBtn = document.getElementById(`popup-submit-${blockId}`);
+    
+    // Disable submit button
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    // Generate discount code
+    const discountCode = 'POPUP' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    
+    // Log subscriber data (for debugging)
+    console.log('New subscriber:', {
+      email,
+      phone,
+      discountCode,
+      blockId,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Show success message immediately (no API call needed)
+    document.getElementById(`popup-form-${blockId}`).style.display = 'none';
+    document.getElementById(`popup-success-${blockId}`).style.display = 'block';
+    document.getElementById(`discount-code-${blockId}`).textContent = discountCode;
+    
+    // Track conversion
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'popup_conversion', {
+        'event_category': 'discount_popup',
+        'event_label': blockId,
+        'value': {{ block.settings.discount_percentage | default: 10 }}
+      });
+    }
+    
+    // Send data to API - try multiple endpoints
+    const shopDomain = window.Shopify?.shop || window.location.hostname;
+    const apiData = {
+      email: email,
+      phone: phone,
+      discount_code: discountCode,
+      block_id: blockId
+    };
+    
+    // Try different API endpoint patterns
+    const apiEndpoints = [
+      `http://localhost:52998/api/subscribe`,
+      `http://localhost:52995/api/subscribe`,
+      `/apps/pop-up-app/api/subscribe`,
+      `/api/subscribe`
+    ];
+    
+    // Try each endpoint until one works
+    async function tryApiCall() {
+      for (const endpoint of apiEndpoints) {
+        try {
+          console.log(`🔄 Trying API endpoint: ${endpoint}`);
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Shop-Domain': shopDomain,
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(apiData)
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ SUCCESS! Email stored in database:', result);
+            return true;
+          } else {
+            console.log(`❌ API endpoint ${endpoint} failed with status:`, response.status);
+          }
+        } catch (error) {
+          console.log(`❌ API endpoint ${endpoint} failed:`, error.message);
+        }
+      }
+      console.log('⚠️ All API endpoints failed - popup still works for user');
+      return false;
+    }
+    
+    // Call the API
+    tryApiCall();
+  };
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Discount Pop-up",
+  "target": "body",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "popup_enabled",
+      "label": "Enable Pop-up",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "popup_title",
+      "label": "Pop-up Title",
+      "default": "Get 10% Off Your First Order!"
+    },
+    {
+      "type": "textarea",
+      "id": "popup_description",
+      "label": "Pop-up Description",
+      "default": "Enter your email to receive an exclusive discount code"
+    },
+    {
+      "type": "range",
+      "id": "discount_percentage",
+      "label": "Discount Percentage",
+      "min": 1,
+      "max": 50,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "type": "select",
+      "id": "popup_position",
+      "label": "Pop-up Position",
+      "options": [
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right Side" },
+        { "value": "left", "label": "Left Side" },
+        { "value": "bottom-right", "label": "Bottom Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "trigger_type",
+      "label": "Trigger Type",
+      "options": [
+        { "value": "page_load", "label": "On Page Load" },
+        { "value": "exit_intent", "label": "On Exit Intent" },
+        { "value": "time_delay", "label": "After Time Delay" },
+        { "value": "scroll", "label": "On Scroll" }
+      ],
+      "default": "page_load"
+    },
+    {
+      "type": "range",
+      "id": "delay_seconds",
+      "label": "Delay (seconds)",
+      "min": 1,
+      "max": 60,
+      "step": 1,
+      "default": 5
+    },
+    {
+      "type": "select",
+      "id": "popup_frequency",
+      "label": "Pop-up Frequency",
+      "options": [
+        { "value": "once_per_session", "label": "Once per session" },
+        { "value": "once_per_day", "label": "Once per day" },
+        { "value": "every_visit", "label": "Every visit" },
+        { "value": "once_per_week", "label": "Once per week" }
+      ],
+      "default": "once_per_session"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button Color",
+      "default": "#007cba"
+    }
+  ]
+}
+{% endschema %}

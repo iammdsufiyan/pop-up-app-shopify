@@ -1,0 +1,102 @@
+api_version = "2024-07"
+
+[[extensions]]
+type = "theme_app_extension"
+name = "Discount Pop-up"
+handle = "discount-popup"
+
+[extensions.settings]
+[[extensions.settings.fields]]
+key = "popup_enabled"
+type = "boolean"
+name = "Enable Pop-up"
+description = "Show discount pop-up on storefront"
+default = true
+
+[[extensions.settings.fields]]
+key = "popup_title"
+type = "text"
+name = "Pop-up Title"
+description = "Main heading for the pop-up"
+default = "Get 10% Off Your First Order!"
+
+[[extensions.settings.fields]]
+key = "popup_description"
+type = "textarea"
+name = "Pop-up Description"
+description = "Description text for the pop-up"
+default = "Enter your email to receive an exclusive discount code"
+
+[[extensions.settings.fields]]
+key = "discount_percentage"
+type = "number"
+name = "Discount Percentage"
+description = "Discount percentage (1-100)"
+default = 10
+
+[[extensions.settings.fields]]
+key = "popup_position"
+type = "select"
+name = "Pop-up Position"
+description = "Where to show the pop-up"
+default = "center"
+options = [
+  { label = "Center", value = "center" },
+  { label = "Right Side", value = "right" },
+  { label = "Left Side", value = "left" },
+  { label = "Bottom Right", value = "bottom-right" }
+]
+
+[[extensions.settings.fields]]
+key = "trigger_type"
+type = "select"
+name = "Trigger Type"
+description = "When to show the pop-up"
+default = "page_load"
+options = [
+  { label = "On Page Load", value = "page_load" },
+  { label = "On Exit Intent", value = "exit_intent" },
+  { label = "After Time Delay", value = "time_delay" },
+  { label = "On Scroll", value = "scroll" }
+]
+
+[[extensions.settings.fields]]
+key = "delay_seconds"
+type = "number"
+name = "Delay (seconds)"
+description = "Delay before showing pop-up (for time delay trigger)"
+default = 5
+
+[[extensions.settings.fields]]
+key = "popup_frequency"
+type = "select"
+name = "Pop-up Frequency"
+description = "How often to show the pop-up"
+default = "once_per_session"
+options = [
+  { label = "Once per session", value = "once_per_session" },
+  { label = "Once per day", value = "once_per_day" },
+  { label = "Every visit", value = "every_visit" },
+  { label = "Once per week", value = "once_per_week" }
+]
+
+[[extensions.settings.fields]]
+key = "background_color"
+type = "color"
+name = "Background Color"
+description = "Pop-up background color"
+default = "#ffffff"
+
+[[extensions.settings.fields]]
+key = "text_color"
+type = "color"
+name = "Text Color"
+description = "Pop-up text color"
+default = "#333333"
+
+[[extensions.settings.fields]]
+key = "button_color"
+type = "color"
+name = "Button Color"
+description = "Submit button color"
+default = "#007cba"
