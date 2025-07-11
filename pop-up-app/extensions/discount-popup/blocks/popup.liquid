@@ -358,8 +358,8 @@
     async function findActiveDevServer() {
       console.log('🔍 Smart port detection: Finding active development server...');
       
-      // Common development server ports (most recent first)
-      const devPorts = [63613, 62285, 59224, 58029, 57602, 55788, 54959, 58042, 55454, 54796, 54225, 49176, 64657, 63226, 62664, 62448, 61563, 61175, 60160, 58729, 58726, 60022, 3000, 8000, 9293];
+      // Common development server ports (FIXED PORT 8888 first, then fallbacks)
+      const devPorts = [8888, 63846, 63613, 62285, 59224, 58029, 57602, 55788, 54959, 58042, 55454, 54796, 54225, 49176, 64657, 63226, 62664, 62448, 61563, 61175, 60160, 58729, 58726, 60022, 3000, 8000, 9293];
       
       // Test each port to find the active server
       for (const port of devPorts) {
