@@ -4,6 +4,10 @@
   "scripts": {
     "build": "remix vite:build",
     "dev": "shopify app dev",
+    "dev:safe": "./start-dev.sh",
+    "dev:clean": "./cleanup-ports.sh && npm run dev",
+    "cleanup": "node graceful-shutdown.js",
+    "cleanup:ports": "./cleanup-ports.sh",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy",
@@ -16,7 +20,11 @@
     "shopify": "shopify",
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
-    "vite": "vite"
+    "vite": "vite",
+    "clear-test-data": "node clear-test-data.js",
+    "test-popup": "echo 'Open test-real-user-popup.html in your browser to test real user input'",
+    "check-db": "node clear-test-data.js",
+    "test-database": "node test-database.mjs"
   },
   "type": "module",
   "engines": {

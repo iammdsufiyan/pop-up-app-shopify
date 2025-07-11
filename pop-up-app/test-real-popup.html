@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Popup Test - User Email Entry</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .popup-form {
+            background: #007cba;
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Real User Email Test</h1>
+        <p><strong>This test demonstrates the CORS issue preventing user emails from being stored.</strong></p>
+        
+        <div class="popup-form">
+            <h2>🎉 Get 10% Off Your First Order!</h2>
+            <p>Enter your email to receive an exclusive discount code</p>
+            
+            <form id="testForm">
+                <input type="email" id="email" placeholder="Enter your real email address" required>
+                <input type="tel" id="phone" placeholder="Phone (optional)">
+                <button type="submit">Get 10% Discount</button>
+            </form>
+        </div>
+        
+        <div id="result" class="result"></div>
+        <div id="log" class="log">📋 Test Log:\n</div>
+    </div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        const resultDiv = document.getElementById('result');
+        
+        function addLog(message) {
+            logDiv.textContent += new Date().toLocaleTimeString() + ' - ' + message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        addLog('🚀 Test page loaded');
+        addLog('📍 Current origin: ' + window.location.origin);
+        
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            
+            addLog('👤 User entered email: ' + email);
+            if (phone) addLog('📱 User entered phone: ' + phone);
+            
+            // Generate discount code like the real popup does
+            const discountCode = 'USER' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            addLog('🎫 Generated discount code: ' + discountCode);
+            
+            const apiData = {
+                email: email,
+                phone: phone || null,
+                discount_code: discountCode,
+                block_id: 'real-user-test'
+            };
+            
+            addLog('📦 Prepared API data: ' + JSON.stringify(apiData));
+            
+            // Try the current development server ports
+            const apiEndpoints = [
+                'http://localhost:60160/api/subscribe',
+                'http://localhost:58729/api/subscribe',
+                'http://localhost:3457/api/subscribe'
+            ];
+            
+            let success = false;
+            
+            for (const endpoint of apiEndpoints) {
+                try {
+                    addLog('🔄 Trying API endpoint: ' + endpoint);
+                    
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Shopify-Shop-Domain': 'booksss12345.myshopify.com'
+                        },
+                        body: JSON.stringify(apiData)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        addLog('✅ SUCCESS! Email stored in database');
+                        addLog('📄 API Response: ' + JSON.stringify(result));
+                        
+                        resultDiv.className = 'result success';
+                        resultDiv.style.display = 'block';
+                        resultDiv.innerHTML = `
+                            <h3>✅ Success!</h3>
+                            <p><strong>Your email was successfully stored!</strong></p>
+                            <p><strong>Email:</strong> ${email}</p>
+                            <p><strong>Discount Code:</strong> ${result.discount_code}</p>
+                            <p><strong>Subscriber ID:</strong> ${result.subscriber_id}</p>
+                            <p>Check Prisma Studio to see your email in the database!</p>
+                        `;
+                        success = true;
+                        break;
+                    } else {
+                        addLog('❌ API endpoint failed with status: ' + response.status);
+                    }
+                } catch (error) {
+                    addLog('❌ API endpoint failed: ' + error.message);
+                    
+                    if (error.message.includes('CORS')) {
+                        addLog('🚨 CORS ERROR DETECTED - This is why user emails are not being stored!');
+                    }
+                }
+            }
+            
+            if (!success) {
+                addLog('💥 ALL API ENDPOINTS FAILED - This is the real issue!');
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>❌ Failed to Store Email</h3>
+                    <p><strong>This demonstrates the CORS issue!</strong></p>
+                    <p>User-entered emails are failing due to CORS policy when the popup tries to call the API from a different origin.</p>
+                    <p><strong>Solution needed:</strong> Fix CORS configuration or use same-origin requests.</p>
+                `;
+            }
+        });
+        
+        addLog('⏳ Ready for user input...');
+    </script>
+</body>
+</html>

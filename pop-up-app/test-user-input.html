@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test User Input Storage</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .form-container { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        input, button { padding: 12px; margin: 10px 0; width: 100%; box-sizing: border-box; }
+        button { background: #007cba; color: white; border: none; cursor: pointer; }
+        .results { background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .error { background: #ffe7e7; color: #d63384; }
+        .success { background: #e7f7e7; color: #198754; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test User Input Storage</h1>
+    
+    <div class="form-container">
+        <h3>Enter Your Details (This will test real storage)</h3>
+        <form id="testForm">
+            <input type="email" id="userEmail" placeholder="Enter your email" required>
+            <input type="tel" id="userPhone" placeholder="Enter your phone (optional)">
+            <button type="submit">💾 Store My Data</button>
+        </form>
+    </div>
+    
+    <div id="results" class="results" style="display: none;"></div>
+    
+    <div class="form-container">
+        <h3>Check Database</h3>
+        <button onclick="checkDatabase()">📊 View All Stored Data</button>
+    </div>
+    
+    <div id="dbResults" class="results" style="display: none;"></div>
+
+    <script>
+        // Current development server port
+        const API_BASE = 'http://localhost:55788';
+        
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('userEmail').value;
+            const phone = document.getElementById('userPhone').value;
+            const resultsDiv = document.getElementById('results');
+            
+            // Show what we're about to send
+            resultsDiv.style.display = 'block';
+            resultsDiv.className = 'results';
+            resultsDiv.innerHTML = `
+                <h4>🔄 Attempting to store:</h4>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+                <p>Sending to: ${API_BASE}/api/subscribe</p>
+            `;
+            
+            // Generate discount code
+            const discountCode = 'USER' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            
+            // Prepare data exactly like the popup does
+            const apiData = {
+                email: email,
+                phone: phone || null,
+                discount_code: discountCode,
+                block_id: 'user-input-test'
+            };
+            
+            try {
+                console.log('📤 Sending user data:', apiData);
+                
+                const response = await fetch(API_BASE + '/api/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Shopify-Shop-Domain': 'booksss12345.myshopify.com'
+                    },
+                    body: JSON.stringify(apiData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ SUCCESS! User data stored:', result);
+                    
+                    resultsDiv.className = 'results success';
+                    resultsDiv.innerHTML = `
+                        <h4>✅ SUCCESS! Your data has been stored:</h4>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
+                        <p><strong>Discount Code:</strong> ${discountCode}</p>
+                        <p><strong>Subscriber ID:</strong> ${result.subscriber_id}</p>
+                        <p><strong>Database Response:</strong> ${result.message}</p>
+                    `;
+                    
+                    // Clear form
+                    document.getElementById('testForm').reset();
+                    
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ API Error:', response.status, errorText);
+                    
+                    resultsDiv.className = 'results error';
+                    resultsDiv.innerHTML = `
+                        <h4>❌ Error storing data:</h4>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Error:</strong> ${errorText}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Network Error:', error);
+                
+                resultsDiv.className = 'results error';
+                resultsDiv.innerHTML = `
+                    <h4>❌ Network Error:</h4>
+                    <p>${error.message}</p>
+                    <p>Make sure your development server is running on port 55788</p>
+                `;
+            }
+        });
+        
+        async function checkDatabase() {
+            const dbResultsDiv = document.getElementById('dbResults');
+            
+            try {
+                dbResultsDiv.style.display = 'block';
+                dbResultsDiv.className = 'results';
+                dbResultsDiv.innerHTML = '<p>🔄 Fetching database contents...</p>';
+                
+                const response = await fetch(API_BASE + '/api/subscribe', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    dbResultsDiv.className = 'results success';
+                    dbResultsDiv.innerHTML = `
+                        <h4>📊 Database Contents (${data.stats.total} total subscribers):</h4>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${data.stats.recent.map((sub, index) => `
+                                <div style="border-bottom: 1px solid #ddd; padding: 10px 0;">
+                                    <strong>${index + 1}. ${sub.email}</strong><br>
+                                    Phone: ${sub.phone || 'N/A'}<br>
+                                    Code: ${sub.discountCode}<br>
+                                    Date: ${new Date(sub.subscribedAt).toLocaleString()}<br>
+                                    Block ID: ${sub.blockId}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    dbResultsDiv.className = 'results error';
+                    dbResultsDiv.innerHTML = '<p>❌ Could not fetch database data</p>';
+                }
+                
+            } catch (error) {
+                dbResultsDiv.className = 'results error';
+                dbResultsDiv.innerHTML = `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

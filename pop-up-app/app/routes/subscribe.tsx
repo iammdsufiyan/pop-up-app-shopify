@@ -1,11 +1,9 @@
-import type { ActionFunctionArgs } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 
-// 🚀 Handle CORS preflight requests for all HTTP methods
-export const loader = async ({ request }: ActionFunctionArgs) => {
-  // Handle CORS preflight requests
+// Handle CORS preflight requests
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -19,20 +17,10 @@ export const loader = async ({ request }: ActionFunctionArgs) => {
     });
   }
 
-  // Handle GET requests for stats (no authentication required for testing)
+  // Handle GET requests for stats
   try {
-    // Get subscription statistics
     const totalSubscribers = await prisma.popupSubscriber.count({
       where: { isActive: true }
-    });
-
-    const todaySubscribers = await prisma.popupSubscriber.count({
-      where: {
-        isActive: true,
-        subscribedAt: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0))
-        }
-      }
     });
 
     const recentSubscribers = await prisma.popupSubscriber.findMany({
@@ -52,31 +40,41 @@ export const loader = async ({ request }: ActionFunctionArgs) => {
     return json({
       stats: {
         total: totalSubscribers,
-        today: todaySubscribers,
         recent: recentSubscribers,
+      }
+    }, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+        "Access-Control-Allow-Headers": "Content-Type, X-Shopify-Shop-Domain, Accept, Authorization",
       }
     });
 
   } catch (error) {
     console.error("Stats error:", error);
-    return json({ error: "Failed to fetch stats" }, { status: 500 });
+    return json({ error: "Failed to fetch stats" }, { 
+      status: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+        "Access-Control-Allow-Headers": "Content-Type, X-Shopify-Shop-Domain, Accept, Authorization",
+      }
+    });
   }
 };
 
-// 🚀 API endpoint to handle pop-up form submissions
+// Handle POST requests for form submissions
 export const action = async ({ request }: ActionFunctionArgs) => {
-
   if (request.method !== "POST") {
     return json({ error: "Method not allowed" }, { status: 405 });
   }
 
   try {
-    console.log("🚀 API Subscribe endpoint called!");
+    console.log("🚀 Subscribe endpoint called!");
     
-    // Get the shop domain from headers or session
     const shopDomain = request.headers.get("x-shopify-shop-domain") ||
                       request.headers.get("referer")?.match(/https?:\/\/([^\/]+)/)?.[1] ||
-                      "booksss12345.myshopify.com"; // fallback for development
+                      "booksss12345.myshopify.com";
 
     console.log("🏪 Shop domain:", shopDomain);
 
@@ -126,12 +124,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
 
     console.log("✅ Successfully saved subscriber:", subscriber.id);
-
-    // Here you can integrate with email marketing services
-    // Example: Mailchimp, Klaviyo, SendGrid, etc.
-    
-    // You can also create a discount code in Shopify
-    // This would require additional GraphQL mutations
 
     return json({
       success: true,
