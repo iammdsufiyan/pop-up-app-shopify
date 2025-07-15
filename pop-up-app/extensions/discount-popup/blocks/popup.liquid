@@ -175,18 +175,18 @@
 
 {% if block.settings.popup_enabled %}
 <div id="discount-popup-{{ block.id }}" class="popup-overlay">
-  <div class="popup-container position-{{ block.settings.popup_position | default: 'center' }}">
+  <div class="popup-container position-center" id="popup-container-{{ block.id }}">
     <button class="popup-close" onclick="closePopup('{{ block.id }}')">&times;</button>
     
     <div id="popup-form-{{ block.id }}">
-      <h2 class="popup-title">{{ block.settings.popup_title | default: 'Get 10% Off Your First Order!' }}</h2>
-      <p class="popup-description">{{ block.settings.popup_description | default: 'Enter your email to receive an exclusive discount code' }}</p>
+      <h2 class="popup-title" id="popup-title-{{ block.id }}">Get 10% Off Your First Order!</h2>
+      <p class="popup-description" id="popup-description-{{ block.id }}">Enter your email to receive an exclusive discount code</p>
       
       <form class="popup-form" onsubmit="submitPopupForm(event, '{{ block.id }}')">
         <input type="email" class="popup-input" placeholder="Enter your email address" required id="popup-email-{{ block.id }}">
         <input type="tel" class="popup-input" placeholder="Phone number (optional)" id="popup-phone-{{ block.id }}">
         <button type="submit" class="popup-submit" id="popup-submit-{{ block.id }}">
-          Get {{ block.settings.discount_percentage | default: 10 }}% Discount
+          Get 10% Discount
         </button>
       </form>
     </div>
@@ -195,7 +195,7 @@
       <h3>🎉 Success!</h3>
       <p>Your discount code is:</p>
       <div class="discount-code" id="discount-code-{{ block.id }}"></div>
-      <p>Use this code at checkout to save {{ block.settings.discount_percentage | default: 10 }}%!</p>
+      <p id="popup-success-text-{{ block.id }}">Use this code at checkout to save 10%!</p>
       <button class="popup-submit" onclick="closePopup('{{ block.id }}')">Start Shopping</button>
     </div>
   </div>
@@ -204,16 +204,208 @@
 <script>
   (function() {
     const blockId = '{{ block.id }}';
-    const triggerType = '{{ block.settings.trigger_type | default: "page_load" }}';
-    const delaySeconds = {{ block.settings.delay_seconds | default: 5 }};
-    const frequency = '{{ block.settings.popup_frequency | default: "once_per_session" }}';
+    
+    // 📊 ANALYTICS TRACKING - Generate unique session ID
+    let sessionId = sessionStorage.getItem('popup_session_id');
+    if (!sessionId) {
+      sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      sessionStorage.setItem('popup_session_id', sessionId);
+    }
+    
+    // 🚀 DYNAMIC SETTINGS - Fetch from app database
+    let popupSettings = {
+      isEnabled: {{ block.settings.popup_enabled | default: true }},
+      title: '{{ block.settings.popup_title | default: "Get 10% Off Your First Order!" }}',
+      description: '{{ block.settings.popup_description | default: "Enter your email to receive an exclusive discount code" }}',
+      discountPercentage: {{ block.settings.discount_percentage | default: 10 }},
+      position: '{{ block.settings.popup_position | default: "center" }}',
+      triggerType: '{{ block.settings.trigger_type | default: "page_load" }}',
+      delaySeconds: {{ block.settings.delay_seconds | default: 5 }},
+      frequency: '{{ block.settings.popup_frequency | default: "once_per_session" }}',
+      backgroundColor: '{{ block.settings.background_color | default: "#ffffff" }}',
+      textColor: '{{ block.settings.text_color | default: "#333333" }}',
+      buttonColor: '{{ block.settings.button_color | default: "#007cba" }}'
+    };
+    
+    // 📊 Track page visit immediately
+    trackAnalyticsEvent('visit');
+    
+    // 🔄 Fetch dynamic settings from app database
+    async function loadDynamicSettings() {
+      try {
+        console.log('🔄 Loading dynamic popup settings from app...');
+        const shopDomain = window.Shopify?.shop || window.location.hostname;
+        
+        // Get current development server port from terminal output
+        const currentDevPort = getCurrentDevPort();
+        
+        // Try multiple endpoints to find the working API
+        const apiEndpoints = [
+          // Try the tunnel URL first (for production/live store)
+          'https://asian-replied-thanks-tee.trycloudflare.com/api/popup-settings',
+          // Try current development server port
+          `http://localhost:${currentDevPort}/api/popup-settings`,
+          // Try common development ports as fallback
+          'http://localhost:62396/api/popup-settings',
+          'http://localhost:3000/api/popup-settings',
+          'http://localhost:8000/api/popup-settings'
+        ];
+        
+        for (const endpoint of apiEndpoints) {
+          try {
+            console.log('🔄 Trying API endpoint:', endpoint);
+            const response = await fetch(endpoint, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Shop-Domain': shopDomain,
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.settings) {
+                console.log('✅ Dynamic settings loaded from:', endpoint);
+                console.log('📋 Settings:', data.settings);
+                popupSettings = { ...popupSettings, ...data.settings };
+                
+                // Update popup content with dynamic settings
+                updatePopupContent();
+                return true;
+              }
+            }
+          } catch (error) {
+            console.log('❌ Failed to connect to:', endpoint, error.message);
+          }
+        }
+        
+        console.log('⚠️ All API endpoints failed, using fallback static settings');
+        console.log('📋 Current static settings:', popupSettings);
+        return false;
+      } catch (error) {
+        console.log('⚠️ Failed to load dynamic settings, using static:', error);
+        return false;
+      }
+    }
+    
+    // Get current development port (updated by port updater)
+    function getCurrentDevPort() {
+      // This will be updated by the port updater script
+      return 62396;
+    }
+    
+    // 📊 ANALYTICS TRACKING FUNCTIONS
+    async function trackAnalyticsEvent(eventType, additionalData = {}) {
+      try {
+        const shopDomain = window.Shopify?.shop || window.location.hostname;
+        const analyticsData = {
+          shopDomain,
+          eventType,
+          blockId,
+          sessionId,
+          userAgent: navigator.userAgent,
+          ipAddress: null, // Will be determined server-side
+          referrer: document.referrer || null,
+          pageUrl: window.location.href,
+          ...additionalData
+        };
+        
+        console.log('📊 Tracking analytics event:', eventType, analyticsData);
+        
+        const currentDevPort = getCurrentDevPort();
+        
+        // Try multiple endpoints for analytics tracking
+        const analyticsEndpoints = [
+          'https://asian-replied-thanks-tee.trycloudflare.com/api/analytics',
+          `http://localhost:${currentDevPort}/api/analytics`,
+          'http://localhost:62396/api/analytics',
+          'http://localhost:3000/api/analytics'
+        ];
+        
+        for (const endpoint of analyticsEndpoints) {
+          try {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(analyticsData)
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('✅ Analytics event tracked:', eventType, result.eventId);
+              return true;
+            }
+          } catch (error) {
+            console.log('❌ Analytics endpoint failed:', endpoint, error.message);
+          }
+        }
+        
+        console.log('⚠️ All analytics endpoints failed for event:', eventType);
+        return false;
+      } catch (error) {
+        console.log('⚠️ Analytics tracking error:', error);
+        return false;
+      }
+    }
+    
+    // 🎨 Update popup content with dynamic settings
+    function updatePopupContent() {
+      const popup = document.getElementById('discount-popup-' + blockId);
+      if (!popup) return;
+      
+      // Update title
+      const titleElement = document.getElementById('popup-title-' + blockId);
+      if (titleElement) titleElement.textContent = popupSettings.title;
+      
+      // Update description
+      const descElement = document.getElementById('popup-description-' + blockId);
+      if (descElement) descElement.textContent = popupSettings.description;
+      
+      // Update button text
+      const buttonElement = document.getElementById('popup-submit-' + blockId);
+      if (buttonElement) buttonElement.textContent = `Get ${popupSettings.discountPercentage}% Discount`;
+      
+      // Update colors and position
+      const container = document.getElementById('popup-container-' + blockId);
+      if (container) {
+        container.style.backgroundColor = popupSettings.backgroundColor;
+        container.style.color = popupSettings.textColor;
+        
+        // Update position class
+        container.className = `popup-container position-${popupSettings.position}`;
+      }
+      
+      if (buttonElement) {
+        buttonElement.style.backgroundColor = popupSettings.buttonColor;
+      }
+      
+      // Update success message
+      const successTextElement = document.getElementById('popup-success-text-' + blockId);
+      if (successTextElement) {
+        successTextElement.textContent = `Use this code at checkout to save ${popupSettings.discountPercentage}%!`;
+      }
+      
+      console.log('🎨 Popup content updated with dynamic settings:', {
+        title: popupSettings.title,
+        discount: popupSettings.discountPercentage,
+        position: popupSettings.position,
+        colors: {
+          background: popupSettings.backgroundColor,
+          text: popupSettings.textColor,
+          button: popupSettings.buttonColor
+        }
+      });
+    }
     
     // Check if popup should be shown based on frequency
     function shouldShowPopup() {
       const storageKey = 'popup_shown_' + blockId;
       const now = new Date().getTime();
+      const currentFrequency = popupSettings.frequency;
       
-      switch(frequency) {
+      switch(currentFrequency) {
         case 'once_per_session':
           return !sessionStorage.getItem(storageKey);
         case 'once_per_day':
@@ -235,8 +427,9 @@
     function markPopupShown() {
       const storageKey = 'popup_shown_' + blockId;
       const now = new Date().getTime();
+      const currentFrequency = popupSettings.frequency;
       
-      if (frequency === 'once_per_session') {
+      if (currentFrequency === 'once_per_session') {
         sessionStorage.setItem(storageKey, 'true');
       } else {
         localStorage.setItem(storageKey, now.toString());
@@ -245,30 +438,49 @@
     
     // Show popup
     function showPopup() {
-      if (!shouldShowPopup()) return;
+      if (!shouldShowPopup()) {
+        console.log('🚫 Popup not shown due to frequency settings');
+        return;
+      }
       
       const popup = document.getElementById('discount-popup-' + blockId);
       if (popup) {
+        console.log('🎉 Showing popup!');
         popup.classList.add('show');
         markPopupShown();
         
-        // Track popup view
+        // 📊 Track popup view analytics
+        trackAnalyticsEvent('popup_view');
+        
+        // Track popup view (legacy Google Analytics)
         if (typeof gtag !== 'undefined') {
           gtag('event', 'popup_view', {
             'event_category': 'discount_popup',
             'event_label': blockId
           });
         }
+      } else {
+        console.log('❌ Popup element not found');
       }
     }
     
     // Initialize popup based on trigger type
     function initPopup() {
-      switch(triggerType) {
+      console.log('🚀 Initializing popup with settings:', popupSettings);
+      
+      // Use current popupSettings values (may have been updated by loadDynamicSettings)
+      const currentTriggerType = popupSettings.triggerType;
+      const currentDelaySeconds = popupSettings.delaySeconds;
+      
+      console.log(`🎯 Trigger: ${currentTriggerType}, Delay: ${currentDelaySeconds}s`);
+      
+      switch(currentTriggerType) {
         case 'page_load':
-          setTimeout(showPopup, delaySeconds * 1000);
+          console.log(`⏰ Setting page load trigger with ${currentDelaySeconds}s delay`);
+          setTimeout(showPopup, currentDelaySeconds * 1000);
           break;
         case 'exit_intent':
+          console.log('🖱️ Setting exit intent trigger');
           document.addEventListener('mouseleave', function(e) {
             if (e.clientY <= 0) {
               showPopup();
@@ -276,9 +488,11 @@
           });
           break;
         case 'time_delay':
-          setTimeout(showPopup, delaySeconds * 1000);
+          console.log(`⏰ Setting time delay trigger with ${currentDelaySeconds}s delay`);
+          setTimeout(showPopup, currentDelaySeconds * 1000);
           break;
         case 'scroll':
+          console.log('📜 Setting scroll trigger');
           let scrollTriggered = false;
           window.addEventListener('scroll', function() {
             if (!scrollTriggered && window.scrollY > 300) {
@@ -287,14 +501,24 @@
             }
           });
           break;
+        default:
+          console.log('⏰ Using default page load trigger');
+          setTimeout(showPopup, 5000);
       }
     }
     
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initPopup);
+      document.addEventListener('DOMContentLoaded', async function() {
+        console.log('📄 DOM loaded, initializing popup...');
+        await loadDynamicSettings();
+        initPopup();
+      });
     } else {
-      initPopup();
+      console.log('📄 DOM already loaded, initializing popup...');
+      loadDynamicSettings().then(() => {
+        initPopup();
+      });
     }
   })();
   
@@ -303,6 +527,7 @@
     const popup = document.getElementById('discount-popup-' + blockId);
     if (popup) {
       popup.classList.remove('show');
+      console.log('❌ Popup closed');
     }
   };
   
@@ -313,108 +538,48 @@
     const phone = document.getElementById('popup-phone-' + blockId).value;
     const submitBtn = document.getElementById('popup-submit-' + blockId);
     
+    console.log('📧 Form submitted:', { email, phone });
+    
     // Disable submit button
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing...';
     
-    // Generate discount code
-    const discountCode = 'POPUP' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    // Generate temporary discount code for immediate display
+    const timestamp = Date.now().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const random = Math.random().toString(36).substr(2, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const paddedRandom = (random + '0000').substr(0, 4);
+    const tempDiscountCode = `POPUP-${timestamp}-${paddedRandom}`.replace(/[^A-Z0-9\-_]/g, '');
     
-    // Log subscriber data (for debugging)
-    console.log('New subscriber:', {
-      email,
-      phone,
-      discountCode,
-      blockId,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Show success message immediately (no API call needed)
+    // Show success message immediately with temporary code
     document.getElementById('popup-form-' + blockId).style.display = 'none';
     document.getElementById('popup-success-' + blockId).style.display = 'block';
-    document.getElementById('discount-code-' + blockId).textContent = discountCode;
+    document.getElementById('discount-code-' + blockId).textContent = tempDiscountCode;
     
-    // Track conversion
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'popup_conversion', {
-        'event_category': 'discount_popup',
-        'event_label': blockId,
-        'value': {{ block.settings.discount_percentage | default: 10 }}
-      });
-    }
+    console.log('🎟️ Generated discount code:', tempDiscountCode);
     
-    // Send data to API - try multiple endpoints
+    // Send data to API
     const shopDomain = window.Shopify?.shop || window.location.hostname;
     const apiData = {
       email: email,
       phone: phone,
-      discount_code: discountCode,
+      discount_code: tempDiscountCode,
       block_id: blockId
     };
     
-    console.log('📤 REAL USER DATA TO STORE:', apiData);
-    
-    // SMART PORT DETECTION - Automatically find active development server
-    async function findActiveDevServer() {
-      console.log('🔍 Smart port detection: Finding active development server...');
-      
-      // Common development server ports (FIXED PORT 8888 first, then fallbacks)
-      const devPorts = [8888, 63846, 63613, 62285, 59224, 58029, 57602, 55788, 54959, 58042, 55454, 54796, 54225, 49176, 64657, 63226, 62664, 62448, 61563, 61175, 60160, 58729, 58726, 60022, 3000, 8000, 9293];
-      
-      // Test each port to find the active server
-      for (const port of devPorts) {
-        try {
-          const testUrl = `http://localhost:${port}/api/subscribe`;
-          console.log(`🔄 Testing port ${port}...`);
-          
-          // Quick test with OPTIONS request (faster than POST)
-          const response = await fetch(testUrl, {
-            method: 'OPTIONS',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Shop-Domain': shopDomain,
-            }
-          });
-          
-          // If we get any response (even 404), the server is running
-          if (response.status !== 0) {
-            console.log(`✅ Found active server on port ${port}!`);
-            return port;
-          }
-        } catch (error) {
-          // Port not active, continue to next
-          console.log(`❌ Port ${port} not active`);
-        }
-      }
-      
-      console.log('⚠️ No active development server found');
-      return null;
-    }
-    
-    // Try API call with smart port detection
+    // Try API call
     async function tryApiCall() {
-      console.log('🚀 Attempting to store user data: ' + email + ', ' + (phone || 'no phone'));
+      const currentDevPort = 62396; // Current development server port
       
-      // First, try to find the active development server
-      const activePort = await findActiveDevServer();
+      const apiEndpoints = [
+        'https://asian-replied-thanks-tee.trycloudflare.com/api/subscribe',
+        `http://localhost:${currentDevPort}/api/subscribe`,
+        'http://localhost:62396/api/subscribe',
+        '/api/subscribe'
+      ];
       
-      const apiEndpoints = [];
-      
-      // If we found an active server, prioritize it
-      if (activePort) {
-        apiEndpoints.push(`http://localhost:${activePort}/api/subscribe`);
-        console.log(`🎯 Using detected active server: localhost:${activePort}`);
-      }
-      
-      // Add fallback endpoints
-      apiEndpoints.push(`/subscribe`);
-      apiEndpoints.push(`/apps/pop-up-app/api/subscribe`);
-      apiEndpoints.push(`/api/subscribe`);
-      
-      // Try each endpoint
       for (const endpoint of apiEndpoints) {
         try {
-          console.log('🔄 Trying API endpoint: ' + endpoint);
+          console.log('🔄 Trying API endpoint:', endpoint);
           const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -427,30 +592,24 @@
           
           if (response.ok) {
             const result = await response.json();
-            console.log('✅ SUCCESS! User email and phone stored in database:', result);
-            console.log('📧 Stored email:', email);
-            console.log('📱 Stored phone:', phone || 'Not provided');
-            console.log('🎟️ Generated discount code:', discountCode);
-            console.log('🆔 Subscriber ID:', result.subscriber_id);
+            console.log('✅ SUCCESS! User data stored:', result);
             
-            // Cache the working port for future use
-            if (activePort) {
-              localStorage.setItem('popup_active_port', activePort.toString());
-              console.log(`💾 Cached working port: ${activePort}`);
+            // Update with real discount code if provided
+            if (result.discount_code && result.discount_code !== tempDiscountCode) {
+              console.log('🎟️ Updating with real Shopify discount code:', result.discount_code);
+              document.getElementById('discount-code-' + blockId).textContent = result.discount_code;
             }
             
             return true;
           } else {
-            const errorText = await response.text();
-            console.log('❌ API endpoint ' + endpoint + ' failed with status:', response.status, errorText);
+            console.log('❌ API endpoint failed:', endpoint, response.status);
           }
         } catch (error) {
-          console.log('❌ API endpoint ' + endpoint + ' failed:', error.message);
+          console.log('❌ API endpoint error:', endpoint, error.message);
         }
       }
       
-      console.log('⚠️ All API endpoints failed - popup still works for user but data not stored');
-      console.log('💡 Make sure your development server is running');
+      console.log('⚠️ All API endpoints failed - popup still works but data not stored');
       return false;
     }
     

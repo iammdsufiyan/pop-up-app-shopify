@@ -10,7 +10,6 @@ import {
   TextField,
   Select,
   RangeSlider,
-  ColorPicker,
   Button,
   BlockStack,
   InlineStack,
@@ -116,57 +115,71 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
+  console.log(`🔧 Popup settings action called for shop: ${shop}`);
+
   try {
     const formData = await request.formData();
     const action = formData.get("action");
 
+    console.log(`🔧 Action type: ${action}`);
+
     if (action === "update_settings") {
+      const settingsData = {
+        isEnabled: formData.get("isEnabled") === "true",
+        title: formData.get("title") as string,
+        description: formData.get("description") as string,
+        discountPercentage: parseInt(formData.get("discountPercentage") as string),
+        position: formData.get("position") as string,
+        triggerType: formData.get("triggerType") as string,
+        delaySeconds: parseInt(formData.get("delaySeconds") as string),
+        frequency: formData.get("frequency") as string,
+        backgroundColor: formData.get("backgroundColor") as string,
+        textColor: formData.get("textColor") as string,
+        buttonColor: formData.get("buttonColor") as string,
+      };
+
+      console.log(`🔧 Settings data to save:`, settingsData);
+
       const updatedSettings = await prisma.popupSettings.upsert({
         where: { shopDomain: shop },
-        update: {
-          isEnabled: formData.get("isEnabled") === "true",
-          title: formData.get("title") as string,
-          description: formData.get("description") as string,
-          discountPercentage: parseInt(formData.get("discountPercentage") as string),
-          position: formData.get("position") as string,
-          triggerType: formData.get("triggerType") as string,
-          delaySeconds: parseInt(formData.get("delaySeconds") as string),
-          frequency: formData.get("frequency") as string,
-          backgroundColor: formData.get("backgroundColor") as string,
-          textColor: formData.get("textColor") as string,
-          buttonColor: formData.get("buttonColor") as string,
-        },
+        update: settingsData,
         create: {
           shopDomain: shop,
-          isEnabled: formData.get("isEnabled") === "true",
-          title: formData.get("title") as string,
-          description: formData.get("description") as string,
-          discountPercentage: parseInt(formData.get("discountPercentage") as string),
-          position: formData.get("position") as string,
-          triggerType: formData.get("triggerType") as string,
-          delaySeconds: parseInt(formData.get("delaySeconds") as string),
-          frequency: formData.get("frequency") as string,
-          backgroundColor: formData.get("backgroundColor") as string,
-          textColor: formData.get("textColor") as string,
-          buttonColor: formData.get("buttonColor") as string,
+          ...settingsData
         }
       });
+
+      console.log(`✅ Settings saved successfully:`, updatedSettings);
 
       return json({ success: true, settings: updatedSettings });
     }
 
+    console.log(`❌ Invalid action: ${action}`);
     return json({ error: "Invalid action" }, { status: 400 });
 
   } catch (error) {
-    console.error("Action error:", error);
+    console.error("❌ Action error:", error);
     return json({ error: "Failed to update settings" }, { status: 500 });
   }
 };
 
 export default function PopupSettings() {
-  const { settings, stats } = useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const [selectedTab, setSelectedTab] = useState(0);
+
+  // Handle potential error state
+  if ('error' in data) {
+    return (
+      <Page>
+        <Banner tone="critical" title="Error loading settings">
+          <p>{data.error}</p>
+        </Banner>
+      </Page>
+    );
+  }
+
+  const { settings, stats } = data;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -195,13 +208,13 @@ export default function PopupSettings() {
   const isLoading = fetcher.state === "submitting";
 
   // Prepare data for subscriber table
-  const subscriberRows = stats.recent.map((subscriber) => [
+  const subscriberRows = stats.recent.map((subscriber: any) => [
     subscriber.email,
     subscriber.phone || "—",
     subscriber.discountCode,
     new Date(subscriber.subscribedAt).toLocaleDateString(),
     subscriber.usedDiscount ? (
-      <Badge status="success">Used</Badge>
+      <Badge tone="success">Used</Badge>
     ) : (
       <Badge>Unused</Badge>
     ),
@@ -219,13 +232,13 @@ export default function PopupSettings() {
       
       <Layout>
         <Layout.Section>
-          {fetcher.data?.success && (
-            <Banner status="success" title="Settings updated successfully!" />
+          {(fetcher.data as any)?.success && (
+            <Banner tone="success" title="Settings updated successfully!" />
           )}
           
-          {fetcher.data?.error && (
-            <Banner status="critical" title="Error updating settings">
-              <p>{fetcher.data.error}</p>
+          {(fetcher.data as any)?.error && (
+            <Banner tone="critical" title="Error updating settings">
+              <p>{(fetcher.data as any).error}</p>
             </Banner>
           )}
 
@@ -268,6 +281,7 @@ export default function PopupSettings() {
                       value={formData.title}
                       onChange={(value) => setFormData({ ...formData, title: value })}
                       helpText="Main heading for your pop-up"
+                      autoComplete="off"
                     />
 
                     <TextField
@@ -276,6 +290,7 @@ export default function PopupSettings() {
                       onChange={(value) => setFormData({ ...formData, description: value })}
                       multiline={3}
                       helpText="Description text that appears below the title"
+                      autoComplete="off"
                     />
 
                     <FormLayout.Group>
@@ -284,7 +299,7 @@ export default function PopupSettings() {
                         value={formData.discountPercentage}
                         min={1}
                         max={50}
-                        onChange={(value) => setFormData({ ...formData, discountPercentage: value })}
+                        onChange={(value) => setFormData({ ...formData, discountPercentage: Array.isArray(value) ? value[0] : value })}
                       />
                       
                       <RangeSlider
@@ -292,7 +307,7 @@ export default function PopupSettings() {
                         value={formData.delaySeconds}
                         min={1}
                         max={60}
-                        onChange={(value) => setFormData({ ...formData, delaySeconds: value })}
+                        onChange={(value) => setFormData({ ...formData, delaySeconds: Array.isArray(value) ? value[0] : value })}
                       />
                     </FormLayout.Group>
 
@@ -324,29 +339,29 @@ export default function PopupSettings() {
 
                     <Text as="h3" variant="headingMd">Colors</Text>
                     <FormLayout.Group>
-                      <Box>
-                        <Text as="p" variant="bodyMd">Background Color</Text>
-                        <ColorPicker
-                          color={formData.backgroundColor}
-                          onChange={(color) => setFormData({ ...formData, backgroundColor: color.hex })}
-                        />
-                      </Box>
+                      <TextField
+                        label="Background Color"
+                        value={formData.backgroundColor}
+                        onChange={(value) => setFormData({ ...formData, backgroundColor: value })}
+                        helpText="Hex color code (e.g., #ffffff)"
+                        autoComplete="off"
+                      />
                       
-                      <Box>
-                        <Text as="p" variant="bodyMd">Text Color</Text>
-                        <ColorPicker
-                          color={formData.textColor}
-                          onChange={(color) => setFormData({ ...formData, textColor: color.hex })}
-                        />
-                      </Box>
+                      <TextField
+                        label="Text Color"
+                        value={formData.textColor}
+                        onChange={(value) => setFormData({ ...formData, textColor: value })}
+                        helpText="Hex color code (e.g., #333333)"
+                        autoComplete="off"
+                      />
                       
-                      <Box>
-                        <Text as="p" variant="bodyMd">Button Color</Text>
-                        <ColorPicker
-                          color={formData.buttonColor}
-                          onChange={(color) => setFormData({ ...formData, buttonColor: color.hex })}
-                        />
-                      </Box>
+                      <TextField
+                        label="Button Color"
+                        value={formData.buttonColor}
+                        onChange={(value) => setFormData({ ...formData, buttonColor: value })}
+                        helpText="Hex color code (e.g., #007cba)"
+                        autoComplete="off"
+                      />
                     </FormLayout.Group>
 
                     <InlineStack align="end">

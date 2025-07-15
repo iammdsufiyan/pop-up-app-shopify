@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Popup Settings Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 300px; padding: 8px; margin-bottom: 10px; }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+        button:hover { background: #005a8b; }
+        .result { margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Popup Settings Debug Test</h1>
+    <p>This page tests the popup settings functionality directly.</p>
+
+    <form id="settingsForm">
+        <div class="form-group">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" value="Get 21% Off Your First Order!" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required>Enter your email to receive an exclusive discount code</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="discountPercentage">Discount Percentage:</label>
+            <input type="number" id="discountPercentage" name="discountPercentage" value="21" min="1" max="50" required>
+        </div>
+
+        <div class="form-group">
+            <label for="position">Position:</label>
+            <select id="position" name="position" required>
+                <option value="center">Center</option>
+                <option value="right">Right Side</option>
+                <option value="left">Left Side</option>
+                <option value="bottom-right">Bottom Right</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="backgroundColor">Background Color:</label>
+            <input type="text" id="backgroundColor" name="backgroundColor" value="#112255" required>
+        </div>
+
+        <div class="form-group">
+            <label for="textColor">Text Color:</label>
+            <input type="text" id="textColor" name="textColor" value="#333333" required>
+        </div>
+
+        <div class="form-group">
+            <label for="buttonColor">Button Color:</label>
+            <input type="text" id="buttonColor" name="buttonColor" value="#007cbb" required>
+        </div>
+
+        <button type="button" onclick="testGetSettings()">Test Get Settings</button>
+        <button type="button" onclick="testUpdateSettings()">Test Update Settings</button>
+    </form>
+
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:51681';
+        
+        function showResult(message, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = isError ? '#ffebee' : '#e8f5e8';
+            resultDiv.style.color = isError ? '#c62828' : '#2e7d32';
+            resultDiv.innerHTML = message;
+        }
+
+        async function testGetSettings() {
+            try {
+                showResult('Testing GET settings...');
+                
+                const response = await fetch(`${API_BASE}/api/popup-settings?shopDomain=booksss12345.myshopify.com`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ GET Settings Success:<br><pre>${JSON.stringify(data.settings, null, 2)}</pre>`);
+                    
+                    // Populate form with current settings
+                    const settings = data.settings;
+                    document.getElementById('title').value = settings.title || '';
+                    document.getElementById('description').value = settings.description || '';
+                    document.getElementById('discountPercentage').value = settings.discountPercentage || 10;
+                    document.getElementById('position').value = settings.position || 'center';
+                    document.getElementById('backgroundColor').value = settings.backgroundColor || '#ffffff';
+                    document.getElementById('textColor').value = settings.textColor || '#333333';
+                    document.getElementById('buttonColor').value = settings.buttonColor || '#007cba';
+                } else {
+                    showResult(`❌ GET Settings Error: ${data.error || 'Unknown error'}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ GET Settings Network Error: ${error.message}`, true);
+            }
+        }
+
+        async function testUpdateSettings() {
+            try {
+                showResult('Testing UPDATE settings...');
+                
+                const formData = new FormData();
+                formData.append('shopDomain', 'booksss12345.myshopify.com');
+                formData.append('title', document.getElementById('title').value);
+                formData.append('description', document.getElementById('description').value);
+                formData.append('discountPercentage', document.getElementById('discountPercentage').value);
+                formData.append('position', document.getElementById('position').value);
+                formData.append('backgroundColor', document.getElementById('backgroundColor').value);
+                formData.append('textColor', document.getElementById('textColor').value);
+                formData.append('buttonColor', document.getElementById('buttonColor').value);
+                formData.append('isEnabled', 'true');
+                formData.append('triggerType', 'scroll');
+                formData.append('delaySeconds', '1');
+                formData.append('frequency', 'every_visit');
+
+                const response = await fetch(`${API_BASE}/api/popup-settings`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(`✅ UPDATE Settings Success:<br><pre>${JSON.stringify(data.settings, null, 2)}</pre>`);
+                } else {
+                    showResult(`❌ UPDATE Settings Error: ${data.error || 'Unknown error'}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ UPDATE Settings Network Error: ${error.message}`, true);
+            }
+        }
+
+        // Auto-load current settings on page load
+        window.onload = function() {
+            testGetSettings();
+        };
+    </script>
+</body>
+</html>

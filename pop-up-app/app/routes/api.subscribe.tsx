@@ -2,6 +2,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { DISCOUNT_QUERIES, createDiscountCodeInput, generateUniqueDiscountCode, validateDiscountCode, type DiscountCodeCreateResponse } from "../utils/graphql";
 
 // 🚀 Handle CORS preflight requests for all HTTP methods
 export const loader = async ({ request }: ActionFunctionArgs) => {
@@ -111,13 +112,114 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
-    // Save subscriber to database
+    // Generate a unique discount code with proper validation
+    let uniqueDiscountCode = generateUniqueDiscountCode();
+    
+    // Validate the generated code
+    if (!validateDiscountCode(uniqueDiscountCode)) {
+      console.log("⚠️ Generated code failed validation, regenerating...");
+      uniqueDiscountCode = generateUniqueDiscountCode();
+    }
+    
+    console.log("🎟️ Generated unique discount code:", uniqueDiscountCode);
+
+    // Try to authenticate and create real Shopify discount code
+    let realDiscountCode = uniqueDiscountCode; // Use generated code as default
+    let shopifyDiscountId = null;
+    let discountCreationSuccess = false;
+
+    try {
+      // Authenticate with Shopify Admin API
+      const { admin } = await authenticate.admin(request);
+      
+      // Get discount percentage from popup settings or default to 10%
+      const popupSettings = await prisma.popupSettings.findUnique({
+        where: { shopDomain }
+      });
+      const discountPercentage = popupSettings?.discountPercentage || 10;
+
+      console.log(`🏪 Creating ${discountPercentage}% discount code in Shopify...`);
+
+      // Create discount code input with validated code
+      const discountInput = createDiscountCodeInput(
+        uniqueDiscountCode,
+        discountPercentage,
+        `Popup Discount - ${email}`
+      );
+
+      // Create the discount code in Shopify
+      const response = await admin.graphql(DISCOUNT_QUERIES.CREATE_DISCOUNT_CODE, {
+        variables: {
+          basicCodeDiscount: discountInput
+        }
+      });
+
+      const result = await response.json() as { data: DiscountCodeCreateResponse };
+
+      if (result.data?.discountCodeBasicCreate?.userErrors?.length === 0) {
+        realDiscountCode = uniqueDiscountCode;
+        shopifyDiscountId = result.data.discountCodeBasicCreate.codeDiscountNode.id;
+        discountCreationSuccess = true;
+        console.log("✅ Successfully created Shopify discount code:", realDiscountCode);
+        console.log("🆔 Shopify discount ID:", shopifyDiscountId);
+        
+        // Add a small delay to ensure the discount is fully created in Shopify
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify the discount was created by querying it back
+        try {
+          const verifyResponse = await admin.graphql(`
+            query getDiscountCode($id: ID!) {
+              discountNode(id: $id) {
+                id
+                discount {
+                  ... on DiscountCodeBasic {
+                    title
+                    codes(first: 1) {
+                      edges {
+                        node {
+                          code
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          `, {
+            variables: { id: shopifyDiscountId }
+          });
+          
+          const verifyResult = await verifyResponse.json();
+          if (verifyResult.data?.discountNode) {
+            console.log("✅ Discount code verified in Shopify system");
+          } else {
+            console.log("⚠️ Discount code not found during verification");
+            discountCreationSuccess = false;
+          }
+        } catch (verifyError) {
+          console.log("⚠️ Could not verify discount code:", verifyError);
+        }
+        
+      } else {
+        console.log("⚠️ Failed to create Shopify discount code:", result.data?.discountCodeBasicCreate?.userErrors);
+        console.log("📝 Falling back to local code storage only");
+        discountCreationSuccess = false;
+      }
+
+    } catch (authError) {
+      console.log("⚠️ Could not authenticate with Shopify Admin API:", authError);
+      console.log("📝 Falling back to local code storage only");
+      discountCreationSuccess = false;
+    }
+
+    // Save subscriber to database with the real discount code
     console.log("💾 Saving to database...");
     const subscriber = await prisma.popupSubscriber.create({
       data: {
         email,
         phone: phone || null,
-        discountCode: discount_code,
+        discountCode: realDiscountCode,
         blockId: block_id,
         shopDomain,
         subscribedAt: new Date(),
@@ -126,18 +228,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
 
     console.log("✅ Successfully saved subscriber:", subscriber.id);
+    console.log("🎟️ Final discount code:", realDiscountCode);
 
     // Here you can integrate with email marketing services
     // Example: Mailchimp, Klaviyo, SendGrid, etc.
-    
-    // You can also create a discount code in Shopify
-    // This would require additional GraphQL mutations
 
     return json({
       success: true,
       message: "Successfully subscribed!",
-      discount_code,
+      discount_code: realDiscountCode,
       subscriber_id: subscriber.id,
+      shopify_discount_id: shopifyDiscountId,
+      shopify_discount_created: discountCreationSuccess,
+      code_validated: validateDiscountCode(realDiscountCode),
     }, {
       headers: {
         "Access-Control-Allow-Origin": "*",

@@ -7,5 +7,9 @@ echo "🔍 Running comprehensive port cleanup..."
 ./cleanup-ports.sh
 
 echo ""
+echo "⚙️ Auto-configuring ports and database connection..."
+node auto-port-config.js
+
+echo ""
 echo "🚀 Starting development server..."
 npm run dev

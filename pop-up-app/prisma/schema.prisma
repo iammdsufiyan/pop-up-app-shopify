@@ -65,3 +65,38 @@ model PopupSettings {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
+model PopupAnalytics {
+  id            String    @id @default(cuid())
+  shopDomain    String
+  eventType     String    // 'visit', 'popup_view', 'popup_close', 'popup_submit'
+  blockId       String?
+  sessionId     String?   // To track unique sessions
+  userAgent     String?
+  ipAddress     String?
+  referrer      String?
+  pageUrl       String?
+  timestamp     DateTime  @default(now())
+  
+  @@index([shopDomain])
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([sessionId])
+}
+
+model DailyAnalytics {
+  id              String   @id @default(cuid())
+  shopDomain      String
+  date            DateTime
+  totalVisits     Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  popupViews      Int      @default(0)
+  popupSubmissions Int     @default(0)
+  conversionRate  Float    @default(0.0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([shopDomain, date])
+  @@index([shopDomain])
+  @@index([date])
+}
