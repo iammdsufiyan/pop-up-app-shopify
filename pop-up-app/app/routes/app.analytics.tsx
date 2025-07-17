@@ -14,6 +14,8 @@ import {
   Button,
   Box,
   Divider,
+  Modal,
+  DataTable,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
@@ -56,6 +58,7 @@ export default function Analytics() {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("7");
+  const [showSuccessRateModal, setShowSuccessRateModal] = useState(false);
 
   const fetchAnalyticsData = useCallback(async () => {
     setLoading(true);
@@ -244,39 +247,71 @@ export default function Analytics() {
                 <BlockStack gap="600">
                   {/* Summary Cards */}
                   <Layout>
-                    <Layout.Section variant="oneThird">
-                      <Card>
-                        <BlockStack gap="200">
-                          <Text as="h3" variant="headingMd">Total Site Visits</Text>
-                          <Text as="p" variant="heading2xl">{analyticsData.summary.totalVisits}</Text>
-                          <Badge>{`Unique: ${analyticsData.summary.uniqueVisitors}`}</Badge>
-                        </BlockStack>
-                      </Card>
+                    <Layout.Section variant="oneHalf">
+                      <Layout>
+                        <Layout.Section variant="oneHalf">
+                          <Card>
+                            <BlockStack gap="200">
+                              <Text as="h3" variant="headingMd">Total Site Visits</Text>
+                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalVisits}</Text>
+                              <Badge>{`Unique: ${analyticsData.summary.uniqueVisitors}`}</Badge>
+                            </BlockStack>
+                          </Card>
+                        </Layout.Section>
+                        
+                        <Layout.Section variant="oneHalf">
+                          <Card>
+                            <BlockStack gap="200">
+                              <Text as="h3" variant="headingMd">Popup Views</Text>
+                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalPopupViews}</Text>
+                              <Badge tone="warning">
+                                {analyticsData.summary.totalVisits > 0
+                                  ? `${Math.round((analyticsData.summary.totalPopupViews / analyticsData.summary.totalVisits) * 100)}% of visits`
+                                  : '0% of visits'
+                                }
+                              </Badge>
+                            </BlockStack>
+                          </Card>
+                        </Layout.Section>
+                      </Layout>
                     </Layout.Section>
                     
-                    <Layout.Section variant="oneThird">
-                      <Card>
-                        <BlockStack gap="200">
-                          <Text as="h3" variant="headingMd">Popup Views</Text>
-                          <Text as="p" variant="heading2xl">{analyticsData.summary.totalPopupViews}</Text>
-                          <Badge tone="warning">
-                            {analyticsData.summary.totalVisits > 0 
-                              ? `${Math.round((analyticsData.summary.totalPopupViews / analyticsData.summary.totalVisits) * 100)}% of visits`
-                              : '0% of visits'
-                            }
-                          </Badge>
-                        </BlockStack>
-                      </Card>
-                    </Layout.Section>
-                    
-                    <Layout.Section variant="oneThird">
-                      <Card>
-                        <BlockStack gap="200">
-                          <Text as="h3" variant="headingMd">Subscriptions</Text>
-                          <Text as="p" variant="heading2xl">{analyticsData.summary.totalSubmissions}</Text>
-                          <Badge>{`${analyticsData.summary.conversionRate}% conversion rate`}</Badge>
-                        </BlockStack>
-                      </Card>
+                    <Layout.Section variant="oneHalf">
+                      <Layout>
+                        <Layout.Section variant="oneHalf">
+                          <Card>
+                            <BlockStack gap="200">
+                              <Text as="h3" variant="headingMd">Subscriptions</Text>
+                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalSubmissions}</Text>
+                              <Badge>{`${analyticsData.summary.conversionRate}% conversion rate`}</Badge>
+                            </BlockStack>
+                          </Card>
+                        </Layout.Section>
+
+                        <Layout.Section variant="oneHalf">
+                          <Card>
+                            <BlockStack gap="200">
+                              <InlineStack align="space-between">
+                                <Text as="h3" variant="headingMd">Success Rate</Text>
+                                <Button
+                                  variant="plain"
+                                  size="micro"
+                                  onClick={() => setShowSuccessRateModal(true)}
+                                >
+                                  View Details
+                                </Button>
+                              </InlineStack>
+                              <Text as="p" variant="heading2xl">{analyticsData.summary.successRate}%</Text>
+                              <Badge tone="success">
+                                {analyticsData.summary.totalPopupViews > 0
+                                  ? `${analyticsData.summary.totalSubmissions} of ${analyticsData.summary.totalPopupViews} views`
+                                  : 'No data yet'
+                                }
+                              </Badge>
+                            </BlockStack>
+                          </Card>
+                        </Layout.Section>
+                      </Layout>
                     </Layout.Section>
                   </Layout>
 
@@ -331,6 +366,80 @@ export default function Analytics() {
           </Card>
         </Layout.Section>
       </Layout>
+
+      {/* Success Rate Details Modal */}
+      <Modal
+        open={showSuccessRateModal}
+        onClose={() => setShowSuccessRateModal(false)}
+        title="Success Rate Details"
+        primaryAction={{
+          content: 'Close',
+          onAction: () => setShowSuccessRateModal(false),
+        }}
+      >
+        <Modal.Section>
+          {analyticsData?.subscriptionDetails ? (
+            <BlockStack gap="400">
+              <Card>
+                <BlockStack gap="300">
+                  <Text as="h3" variant="headingMd">Overview</Text>
+                  <InlineStack gap="400">
+                    <Box>
+                      <Text as="p" variant="bodyMd" tone="subdued">Total Subscriptions</Text>
+                      <Text as="p" variant="headingLg">{analyticsData.subscriptionDetails.totalSubscriptions}</Text>
+                    </Box>
+                    <Box>
+                      <Text as="p" variant="bodyMd" tone="subdued">Success Rate</Text>
+                      <Text as="p" variant="headingLg">{analyticsData.subscriptionDetails.successRate}%</Text>
+                    </Box>
+                    <Box>
+                      <Text as="p" variant="bodyMd" tone="subdued">Total Popup Views</Text>
+                      <Text as="p" variant="headingLg">{analyticsData.summary.totalPopupViews}</Text>
+                    </Box>
+                  </InlineStack>
+                </BlockStack>
+              </Card>
+
+              <Card>
+                <BlockStack gap="300">
+                  <Text as="h3" variant="headingMd">Daily Breakdown</Text>
+                  <DataTable
+                    columnContentTypes={['text', 'numeric', 'numeric', 'numeric']}
+                    headings={['Date', 'Subscriptions', 'Popup Views', 'Success Rate']}
+                    rows={analyticsData.subscriptionDetails.dailyBreakdown.map((day: any) => [
+                      day.date,
+                      day.subscriptions,
+                      day.views,
+                      `${Math.round(day.successRate * 100) / 100}%`
+                    ])}
+                  />
+                </BlockStack>
+              </Card>
+
+              {analyticsData.subscriptionDetails.recentSubscriptions.length > 0 && (
+                <Card>
+                  <BlockStack gap="300">
+                    <Text as="h3" variant="headingMd">Recent Subscriptions</Text>
+                    <DataTable
+                      columnContentTypes={['text', 'text', 'text']}
+                      headings={['Timestamp', 'Session ID', 'Page URL']}
+                      rows={analyticsData.subscriptionDetails.recentSubscriptions.map((sub: any) => [
+                        new Date(sub.timestamp).toLocaleString(),
+                        sub.sessionId?.substring(0, 8) + '...' || 'N/A',
+                        sub.pageUrl || 'N/A'
+                      ])}
+                    />
+                  </BlockStack>
+                </Card>
+              )}
+            </BlockStack>
+          ) : (
+            <Box padding="400">
+              <Text as="p" alignment="center">No subscription data available yet.</Text>
+            </Box>
+          )}
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { useFetcher, useLoaderData } from "@remix-run/react";
 import {
@@ -18,9 +18,11 @@ import {
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import PopupSettingsModal from "../components/PopupSettingsModal";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
 
   try {
     // Get subscription statistics
@@ -51,12 +53,50 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
     });
 
+    // Get current popup settings
+    let settings = await prisma.popupSettings.findUnique({
+      where: { shopDomain: shop }
+    });
+
+    // Create default settings if none exist
+    if (!settings) {
+      settings = await prisma.popupSettings.create({
+        data: {
+          shopDomain: shop,
+          isEnabled: true,
+          title: "Get 23% Off Your First Order!",
+          description: "an exclusive discount code get it boy",
+          discountType: "percentage_off",
+          discountPercentage: 20,
+          discountAmount: 10.0,
+          discountCode: "WELCOME20",
+          locationTargeting: "all",
+          targetCountries: "",
+          scheduleType: "always",
+          startDate: "",
+          endDate: "",
+          startTime: "",
+          endTime: "",
+          pageRules: "all_pages",
+          specificPages: "",
+          position: "center",
+          triggerType: "scroll",
+          delaySeconds: 1,
+          frequency: "every_visit",
+          backgroundColor: "#ffffff",
+          textColor: "#333333",
+          buttonColor: "#007cba",
+        } as any
+      });
+    }
+
     return {
       stats: {
         total: totalSubscribers,
         today: todaySubscribers,
         recent: recentSubscribers,
-      }
+      },
+      settings
     };
   } catch (error) {
     console.error("Stats error:", error);
@@ -65,7 +105,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         total: 0,
         today: 0,
         recent: [],
-      }
+      },
+      settings: null
     };
   }
 };
@@ -141,7 +182,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function Index() {
   const fetcher = useFetcher<typeof action>();
-  const { stats } = useLoaderData<typeof loader>();
+  const { stats, settings } = useLoaderData<typeof loader>();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const shopify = useAppBridge();
   const isLoading =
@@ -161,11 +203,11 @@ export default function Index() {
 
   // Format recent subscribers for DataTable
   const subscriberRows = stats.recent.map((subscriber) => [
-    subscriber.email,
-    subscriber.phone || "—",
-    subscriber.discountCode,
-    new Date(subscriber.subscribedAt).toLocaleDateString(),
-    new Date(subscriber.subscribedAt).toLocaleTimeString(),
+    subscriber?.email || "",
+    subscriber?.phone || "—",
+    subscriber?.discountCode || "",
+    subscriber?.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleDateString() : "",
+    subscriber?.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleTimeString() : "",
   ]);
 
   return (
@@ -252,10 +294,10 @@ export default function Index() {
                 </BlockStack>
                 <InlineStack gap="300">
                   <Button
-                    url="/app/popup-settings"
+                    onClick={() => setIsModalOpen(true)}
                     variant="primary"
                   >
-                    Configure Pop-up Settings
+                    Create Pop-up Setting
                   </Button>
                   <Button loading={isLoading} onClick={generateProduct}>
                     Generate a product
@@ -313,110 +355,15 @@ export default function Index() {
               </BlockStack>
             </Card>
           </Layout.Section>
-          <Layout.Section variant="oneThird">
-            <BlockStack gap="500">
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    App template specs
-                  </Text>
-                  <BlockStack gap="200">
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Framework
-                      </Text>
-                      <Link
-                        url="https://remix.run"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Remix
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Database
-                      </Text>
-                      <Link
-                        url="https://www.prisma.io/"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Prisma
-                      </Link>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Interface
-                      </Text>
-                      <span>
-                        <Link
-                          url="https://polaris.shopify.com"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          Polaris
-                        </Link>
-                        {", "}
-                        <Link
-                          url="https://shopify.dev/docs/apps/tools/app-bridge"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          App Bridge
-                        </Link>
-                      </span>
-                    </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        API
-                      </Text>
-                      <Link
-                        url="https://shopify.dev/docs/api/admin-graphql"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphQL API
-                      </Link>
-                    </InlineStack>
-                  </BlockStack>
-                </BlockStack>
-              </Card>
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Next steps
-                  </Text>
-                  <List>
-                    <List.Item>
-                      Build an{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        {" "}
-                        example app
-                      </Link>{" "}
-                      to get started
-                    </List.Item>
-                    <List.Item>
-                      Explore Shopify’s API with{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphiQL
-                      </Link>
-                    </List.Item>
-                  </List>
-                </BlockStack>
-              </Card>
-            </BlockStack>
-          </Layout.Section>
         </Layout>
       </BlockStack>
+      
+      {/* Popup Settings Modal */}
+      <PopupSettingsModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        settings={settings}
+      />
     </Page>
   );
 }

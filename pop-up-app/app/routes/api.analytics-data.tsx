@@ -65,11 +65,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     // Prepare chart data
     const chartData = {
-      labels: [],
-      visits: [],
-      popupViews: [],
-      submissions: [],
-      conversionRates: []
+      labels: [] as string[],
+      visits: [] as number[],
+      popupViews: [] as number[],
+      submissions: [] as number[],
+      conversionRates: [] as number[]
     };
 
     // Fill in data for each day in the range
@@ -92,18 +92,44 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return acc;
     }, {} as Record<string, number>);
 
+    // Calculate success rate metrics
+    const successRate = totalPopupViews > 0 ? (totalSubmissions / totalPopupViews) * 100 : 0;
+    const viewToVisitRate = totalVisits > 0 ? (totalPopupViews / totalVisits) * 100 : 0;
+    
+    // Get subscription details for popup view
+    const subscriptionEvents = eventAnalytics.filter(event => event.eventType === 'popup_submit');
+    const subscriptionsByDay = dailyAnalytics.map(day => ({
+      date: day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      subscriptions: day.popupSubmissions,
+      views: day.popupViews,
+      successRate: day.popupViews > 0 ? (day.popupSubmissions / day.popupViews) * 100 : 0
+    }));
+
     const analyticsData = {
       summary: {
         totalVisits,
         uniqueVisitors: uniqueVisitors.length,
         totalPopupViews,
         totalSubmissions,
-        conversionRate: Math.round(averageConversionRate * 100) / 100
+        conversionRate: Math.round(averageConversionRate * 100) / 100,
+        successRate: Math.round(successRate * 100) / 100,
+        viewToVisitRate: Math.round(viewToVisitRate * 100) / 100
       },
       chartData,
       eventBreakdown,
       dailyAnalytics,
-      recentEvents: eventAnalytics.slice(0, 50) // Last 50 events
+      recentEvents: eventAnalytics.slice(0, 50), // Last 50 events
+      subscriptionDetails: {
+        totalSubscriptions: totalSubmissions,
+        successRate: Math.round(successRate * 100) / 100,
+        dailyBreakdown: subscriptionsByDay,
+        recentSubscriptions: subscriptionEvents.slice(0, 20).map(event => ({
+          timestamp: event.timestamp,
+          sessionId: event.sessionId,
+          pageUrl: event.pageUrl,
+          userAgent: event.userAgent
+        }))
+      }
     };
 
     console.log('✅ Analytics data retrieved:', {

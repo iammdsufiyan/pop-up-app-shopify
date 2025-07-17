@@ -246,9 +246,9 @@
           // Try current development server port
           `http://localhost:${currentDevPort}/api/popup-settings`,
           // Try common development ports as fallback
-          'http://localhost:62396/api/popup-settings',
-          'http://localhost:3000/api/popup-settings',
-          'http://localhost:8000/api/popup-settings'
+          'http://localhost:64467/api/popup-settings',
+          'http://localhost:64467/api/popup-settings',
+          'http://localhost:64467/api/popup-settings'
         ];
         
         for (const endpoint of apiEndpoints) {
@@ -290,8 +290,8 @@
     
     // Get current development port (updated by port updater)
     function getCurrentDevPort() {
-      // This will be updated by the port updater script
-      return 62396;
+      // Auto-updated by smart-port-updater.js
+      return 64467;
     }
     
     // 📊 ANALYTICS TRACKING FUNCTIONS
@@ -318,8 +318,8 @@
         const analyticsEndpoints = [
           'https://asian-replied-thanks-tee.trycloudflare.com/api/analytics',
           `http://localhost:${currentDevPort}/api/analytics`,
-          'http://localhost:62396/api/analytics',
-          'http://localhost:3000/api/analytics'
+          'http://localhost:64467/api/analytics',
+          'http://localhost:64467/api/analytics'
         ];
         
         for (const endpoint of analyticsEndpoints) {
@@ -568,12 +568,12 @@
     
     // Try API call
     async function tryApiCall() {
-      const currentDevPort = 62396; // Current development server port
+      const currentDevPort = 64467; // Current development server port
       
       const apiEndpoints = [
         'https://asian-replied-thanks-tee.trycloudflare.com/api/subscribe',
         `http://localhost:${currentDevPort}/api/subscribe`,
-        'http://localhost:62396/api/subscribe',
+        'http://localhost:64467/api/subscribe',
         '/api/subscribe'
       ];
       

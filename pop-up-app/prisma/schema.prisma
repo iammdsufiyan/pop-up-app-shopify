@@ -54,7 +54,19 @@ model PopupSettings {
   isEnabled         Boolean  @default(true)
   title             String   @default("Get 10% Off Your First Order!")
   description       String   @default("Enter your email to receive an exclusive discount code")
+  discountType      String   @default("percentage_off") // percentage_off, fixed_amount, free_shipping
   discountPercentage Int     @default(10)
+  discountAmount    Float?   @default(0.0) // For fixed amount discounts
+  discountCode      String   @default("WELCOME10") // The actual discount code to be used
+  locationTargeting String   @default("all") // all, specific_countries
+  targetCountries   String   @default("") // JSON array of country codes
+  scheduleType      String   @default("always") // always, date_range, time_range
+  startDate         String?  @default("") // Start date for date range
+  endDate           String?  @default("") // End date for date range
+  startTime         String?  @default("") // Start time for time range (HH:MM)
+  endTime           String?  @default("") // End time for time range (HH:MM)
+  pageRules         String   @default("all_pages") // all_pages, specific_pages
+  specificPages     String   @default("") // JSON array of page URLs/patterns
   position          String   @default("center")
   triggerType       String   @default("page_load")
   delaySeconds      Int      @default(5)

@@ -3,7 +3,7 @@
 client_id = "0101df2c30b27d14adad2624b4f30e69"
 name = "pop-up-app"
 handle = "pop-up-app-7"
-application_url = "https://hairy-variables-keyboard-cohen.trycloudflare.com"
+application_url = "https://settlement-development-resident-featuring.trycloudflare.com"
 embedded = true
 
 [build]
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "write_products,write_price_rules"
 
 [auth]
-redirect_urls = ["https://hairy-variables-keyboard-cohen.trycloudflare.com/auth/callback", "https://hairy-variables-keyboard-cohen.trycloudflare.com/auth/shopify/callback", "https://hairy-variables-keyboard-cohen.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://settlement-development-resident-featuring.trycloudflare.com/auth/callback", "https://settlement-development-resident-featuring.trycloudflare.com/auth/shopify/callback", "https://settlement-development-resident-featuring.trycloudflare.com/api/auth/callback"]
 
 [pos]
 embedded = false
