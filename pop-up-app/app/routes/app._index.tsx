@@ -234,6 +234,12 @@ export default function Index() {
                       Pop-up Settings
                     </Link>{" "}
                     to configure your pop-up appearance, timing, and discount settings.
+                    <br /><br />
+                    You can also visit{" "}
+                    <Link url="/app/option-sets" removeUnderline>
+                      Option Sets
+                    </Link>{" "}
+                    to see the new full-screen modal system similar to Shopify's interface.
                   </Text>
                 </BlockStack>
                 
