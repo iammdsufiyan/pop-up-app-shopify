@@ -19,6 +19,7 @@ import {
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
 
 // Chart.js imports (will work after installation)
 import {
@@ -49,12 +50,17 @@ ChartJS.register(
 );
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
-  return json({ shop: session.shop });
+  await authenticate.admin(request);
+
+  const subscribers = await prisma.popupSubscriber.findMany({
+    orderBy: { subscribedAt: 'desc' },
+  });
+
+  return json({ subscribers });
 };
 
 export default function Analytics() {
-  const { shop } = useLoaderData<typeof loader>();
+  const { subscribers } = useLoaderData<typeof loader>();
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("7");
@@ -217,151 +223,21 @@ export default function Analytics() {
       <Layout>
         <Layout.Section>
           <Card>
-            <BlockStack gap="400">
-              <InlineStack align="space-between">
-                <Text as="h2" variant="headingMd">
-                  Popup Performance Analytics
-                </Text>
-                <InlineStack gap="200">
-                  <Select
-                    label="Time Range"
-                    options={[
-                      { label: "Last 7 days", value: "7" },
-                      { label: "Last 14 days", value: "14" },
-                      { label: "Last 30 days", value: "30" },
-                    ]}
-                    value={timeRange}
-                    onChange={setTimeRange}
-                  />
-                  <Button onClick={fetchAnalyticsData} loading={loading}>
-                    Refresh
-                  </Button>
-                </InlineStack>
-              </InlineStack>
-
-              {loading ? (
-                <Box padding="400">
-                  <Text as="p" alignment="center">Loading analytics data...</Text>
-                </Box>
-              ) : analyticsData ? (
-                <BlockStack gap="600">
-                  {/* Summary Cards */}
-                  <Layout>
-                    <Layout.Section variant="oneHalf">
-                      <Layout>
-                        <Layout.Section variant="oneHalf">
-                          <Card>
-                            <BlockStack gap="200">
-                              <Text as="h3" variant="headingMd">Total Site Visits</Text>
-                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalVisits}</Text>
-                              <Badge>{`Unique: ${analyticsData.summary.uniqueVisitors}`}</Badge>
-                            </BlockStack>
-                          </Card>
-                        </Layout.Section>
-                        
-                        <Layout.Section variant="oneHalf">
-                          <Card>
-                            <BlockStack gap="200">
-                              <Text as="h3" variant="headingMd">Popup Views</Text>
-                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalPopupViews}</Text>
-                              <Badge tone="warning">
-                                {analyticsData.summary.totalVisits > 0
-                                  ? `${Math.round((analyticsData.summary.totalPopupViews / analyticsData.summary.totalVisits) * 100)}% of visits`
-                                  : '0% of visits'
-                                }
-                              </Badge>
-                            </BlockStack>
-                          </Card>
-                        </Layout.Section>
-                      </Layout>
-                    </Layout.Section>
-                    
-                    <Layout.Section variant="oneHalf">
-                      <Layout>
-                        <Layout.Section variant="oneHalf">
-                          <Card>
-                            <BlockStack gap="200">
-                              <Text as="h3" variant="headingMd">Subscriptions</Text>
-                              <Text as="p" variant="heading2xl">{analyticsData.summary.totalSubmissions}</Text>
-                              <Badge>{`${analyticsData.summary.conversionRate}% conversion rate`}</Badge>
-                            </BlockStack>
-                          </Card>
-                        </Layout.Section>
-
-                        <Layout.Section variant="oneHalf">
-                          <Card>
-                            <BlockStack gap="200">
-                              <InlineStack align="space-between">
-                                <Text as="h3" variant="headingMd">Success Rate</Text>
-                                <Button
-                                  variant="plain"
-                                  size="micro"
-                                  onClick={() => setShowSuccessRateModal(true)}
-                                >
-                                  View Details
-                                </Button>
-                              </InlineStack>
-                              <Text as="p" variant="heading2xl">{analyticsData.summary.successRate}%</Text>
-                              <Badge tone="success">
-                                {analyticsData.summary.totalPopupViews > 0
-                                  ? `${analyticsData.summary.totalSubmissions} of ${analyticsData.summary.totalPopupViews} views`
-                                  : 'No data yet'
-                                }
-                              </Badge>
-                            </BlockStack>
-                          </Card>
-                        </Layout.Section>
-                      </Layout>
-                    </Layout.Section>
-                  </Layout>
-
-                  <Divider />
-
-                  {/* Charts */}
-                  <Layout>
-                    <Layout.Section>
-                      <Card>
-                        <BlockStack gap="400">
-                          <Text as="h3" variant="headingMd">Daily Trends</Text>
-                          {lineChartData && (
-                            <Box minHeight="400px">
-                              <Line data={lineChartData} options={lineChartOptions} />
-                            </Box>
-                          )}
-                        </BlockStack>
-                      </Card>
-                    </Layout.Section>
-                    
-                    <Layout.Section variant="oneThird">
-                      <Card>
-                        <BlockStack gap="400">
-                          <Text as="h3" variant="headingMd">Event Distribution</Text>
-                          {doughnutData && (
-                            <Box minHeight="300px">
-                              <Doughnut data={doughnutData} options={doughnutOptions} />
-                            </Box>
-                          )}
-                        </BlockStack>
-                      </Card>
-                    </Layout.Section>
-                  </Layout>
-
-                  <Card>
-                    <BlockStack gap="400">
-                      <Text as="h3" variant="headingMd">Conversion Funnel</Text>
-                      {barChartData && (
-                        <Box minHeight="400px">
-                          <Bar data={barChartData} options={barChartOptions} />
-                        </Box>
-                      )}
-                    </BlockStack>
-                  </Card>
-                </BlockStack>
-              ) : (
-                <Box padding="400">
-                  <Text as="p" alignment="center">No analytics data available yet. Visit your store to start collecting data!</Text>
-                </Box>
-              )}
+            <BlockStack gap="500">
+              <Text as="h2" variant="headingMd">
+                All Subscribers
+              </Text>
+              <DataTable
+                columnContentTypes={['text', 'text', 'text', 'text', 'text']}
+                headings={['Email', 'Phone', 'Discount Code', 'Date', 'Time']}
+                rows={subscribers.map((subscriber) => [
+                  subscriber?.email || "",
+                  subscriber?.phone || "—",
+                  subscriber?.discountCode || "",
+                  subscriber?.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleDateString() : "",
+                  subscriber?.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleTimeString() : "",
+                ])}
+              />
             </BlockStack>
           </Card>
         </Layout.Section>

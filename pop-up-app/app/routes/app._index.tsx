@@ -18,7 +18,6 @@ import {
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import PopupSettingsModal from "../components/PopupSettingsModal";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -183,7 +182,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function Index() {
   const fetcher = useFetcher<typeof action>();
   const { stats, settings } = useLoaderData<typeof loader>();
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const shopify = useAppBridge();
   const isLoading =
@@ -212,11 +210,7 @@ export default function Index() {
 
   return (
     <Page>
-      <TitleBar title="Pop-up Discount App">
-        <button variant="primary" onClick={generateProduct}>
-          Generate a product
-        </button>
-      </TitleBar>
+      <TitleBar title="Pop-up Discount App" />
       <BlockStack gap="500">
         <Layout>
           <Layout.Section>
@@ -299,15 +293,11 @@ export default function Index() {
                   </Text>
                 </BlockStack>
                 <InlineStack gap="300">
-                  <Button
-                    onClick={() => setIsModalOpen(true)}
-                    variant="primary"
-                  >
-                    Create Pop-up Setting
-                  </Button>
+                  <Button url="/app/analytics">View All Subscribers</Button>
                   <Button loading={isLoading} onClick={generateProduct}>
                     Generate a product
                   </Button>
+                  <Button url="/app/create-popup">Configure Pop-up</Button>
                   {fetcher.data?.product && (
                     <Button
                       url={`shopify:admin/products/${productId}`}
@@ -364,12 +354,6 @@ export default function Index() {
         </Layout>
       </BlockStack>
       
-      {/* Popup Settings Modal */}
-      <PopupSettingsModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        settings={settings}
-      />
     </Page>
   );
 }

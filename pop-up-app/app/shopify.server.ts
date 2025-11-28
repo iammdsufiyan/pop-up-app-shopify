@@ -33,3 +33,8 @@ export const unauthenticated = shopify.unauthenticated;
 export const login = shopify.login;
 export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;
+
+// 🚀 Function to get the app URL
+export const getAppUrl = () => {
+  return process.env.SHOPIFY_APP_URL || "";
+};

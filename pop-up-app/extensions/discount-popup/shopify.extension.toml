@@ -1,6 +1,7 @@
 api_version = "2024-07"
 
 [[extensions]]
+uid = "e758d1c0-a2c8-e402-58aa-7f47c1752bc6c50e9ec4"
 type = "theme_app_extension"
 name = "Discount Pop-up"
 handle = "discount-popup"
